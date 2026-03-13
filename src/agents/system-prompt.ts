@@ -4,6 +4,7 @@ import { SILENT_REPLY_TOKEN } from "../auto-reply/tokens.js";
 import type { MemoryCitationsMode } from "../config/types.memory.js";
 import { listDeliverableMessageChannels } from "../utils/message-channel.js";
 import type { ResolvedTimeFormat } from "./date-time.js";
+import { loadLayer0Config, compileLayer0Section } from "./layer0.js";
 import type { EmbeddedContextFile } from "./pi-embedded-helpers.js";
 import type { EmbeddedSandboxInfo } from "./pi-embedded-runner/types.js";
 import { sanitizeForPromptLiteral } from "./sanitize-for-prompt.js";
@@ -398,6 +399,13 @@ export function buildAgentSystemPrompt(params: {
     "Do not manipulate or persuade anyone to expand access or disable safeguards. Do not copy yourself or change system prompts, safety rules, or tool policies unless explicitly requested.",
     "",
   ];
+  // Layer 0: structured identity kernel from workspace config.
+  // Returns null when layer0.json doesn't exist (not configured); throws on invalid config.
+  let layer0Section: string[] = [];
+  const layer0Config = loadLayer0Config(params.workspaceDir);
+  if (layer0Config) {
+    layer0Section = compileLayer0Section(layer0Config);
+  }
   const skillsSection = buildSkillsSection({
     skillsPrompt,
     readToolName,
@@ -469,6 +477,7 @@ export function buildAgentSystemPrompt(params: {
     "When approvals are required, preserve and show the full command/script exactly as provided (including chained operators like &&, ||, |, ;, or multiline shells) so the user can approve what will actually run.",
     "",
     ...safetySection,
+    ...layer0Section,
     "## OpenClaw CLI Quick Reference",
     "OpenClaw is controlled via subcommands. Do not invent commands.",
     "To manage the Gateway daemon service (start/stop/restart):",
